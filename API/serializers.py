@@ -1,9 +1,19 @@
 from rest_framework import serializers
-from rest_framework.serializers import ValidationError
 from .models import Students,Instructors,Courses
 from django.contrib.auth.hashers import make_password
-
+from rest_framework_simplejwt.tokens import RefreshToken
 #validate - common validation to all fields is check for sql injection by using validate() and loop through every
+
+class CustomRefreshToken(RefreshToken):
+    @classmethod
+    def for_user(cls, user):
+        token = super().for_user(user)
+        token['user_id'] = str(user.id)  # Include the user ID in the token payload
+        return token
+
+
+
+
 
 class CourseSerializer(serializers.ModelSerializer):
     class Meta:

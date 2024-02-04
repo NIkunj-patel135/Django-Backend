@@ -2,8 +2,78 @@ from .models import Courses,Students,Instructors
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
-from .serializers import StudentSerializer,InstructorSerializer,CourseSerializer
+from django.contrib.auth.models import User
+from rest_framework_simplejwt.tokens import RefreshToken,AccessToken
+from .serializers import StudentSerializer,InstructorSerializer,CourseSerializer,CustomRefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView,TokenError, token_refresh
+from datetime import datetime
+from rest_framework_simplejwt.views import TokenRefreshView
+
 # Create your views here.
+class check(APIView):
+    def post(self,request):
+        access_token = request.COOKIES.get("access")
+        refresh_token = request.COOKIES.get("refresh")
+        refresh_token = AccessToken(refresh_token)
+        expire = refresh_token.payload['exp']
+        
+        expiration_datetime = datetime.utcfromtimestamp(expire)
+        # refresh_token = AccessToken(refresh_token)
+        
+        if expiration_datetime > datetime.utcnow():
+            #new tokens are generated
+            user_id = refresh_token.payload['user_id']
+            user = User.objects.get(id=int(user_id))
+            new_token = RefreshToken.for_user(user)
+            print("new access token",str(new_token.access_token))
+            print("new refresh token",str(new_token))
+            print(access_token == new_token.access_token)
+            
+        else:
+            print("Token is still valid")
+        
+        return Response({'status':"success"},status=status.HTTP_200_OK)
+    
+    def get(self,request):
+        try:
+            access_token = request.COOKIES.get("access")
+            access_token = AccessToken(access_token)
+            
+        except TokenError as e: 
+            # Check if the error is due to token expiration
+            if str(e) == 'Token is invalid or expired':
+                
+                    refresh_token = request.data.get("refresh")
+                    user_id = request.COOKIES.get("user_id")
+                    refresh_token = RefreshToken(refresh_token)
+                    user = User.objects.get(id=int(user_id))
+                    new_token = RefreshToken.for_user(user)
+                    print(access_token == new_token.access_token)
+                    # print("new access token",AccessToken(new_token.access_token))
+                    # print("new refresh token",RefreshToken(new_token))
+                    return Response({"error or success":"new tokens generated"},status=200)
+                # except TokenError as re:
+                #     return Response({'error': 'Refresh token has expired, again login'}, status=400)
+            else:
+                return Response({'error': str(e)}, status=400)
+        print(access_token.payload)
+        return Response({"success":"token is still valid"},status=200)
+
+class LoginAPIView(APIView):
+    def post(self,request):
+        username = request.data['username']
+        password = request.data['password']
+        user = User(username=username)
+        user.set_password(str(password))
+        user.save()
+        token = CustomRefreshToken.for_user(user)
+        response = Response()
+        response.set_cookie('access',str(token.access_token),httponly=True)
+        response.set_cookie('refresh',str(token),httponly=True)
+        response.set_cookie('user_id',user.id,httponly=True)
+        
+        return response
+
 
 class CourseAPIView(APIView):
     def get(self,request):
