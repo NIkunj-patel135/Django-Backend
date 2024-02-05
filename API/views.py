@@ -5,8 +5,9 @@ from rest_framework.response import Response
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import RefreshToken,AccessToken
 from .serializers import StudentSerializer,InstructorSerializer,CourseSerializer,CustomRefreshToken
-from rest_framework_simplejwt.views import TokenRefreshView,TokenError, token_refresh
+from rest_framework_simplejwt.views import TokenRefreshView,TokenError
 from datetime import datetime
+import jwt
 from rest_framework_simplejwt.views import TokenRefreshView
 
 # Create your views here.
@@ -37,27 +38,39 @@ class check(APIView):
     def get(self,request):
         try:
             access_token = request.COOKIES.get("access")
+            print(access_token)
             access_token = AccessToken(access_token)
-            
+            print(request.COOKIES)
+            return Response({"success":"token is still valid"},status=200)
         except TokenError as e: 
             # Check if the error is due to token expiration
-            if str(e) == 'Token is invalid or expired':
-                
-                    refresh_token = request.data.get("refresh")
+            # if str(e) == 'Token is invalid or expired': 
+            #         user_id = request.COOKIES.get("user_id")
+                    
+            #         user = User.objects.get(id=int(user_id))
+            #         new_access = RefreshToken.for_user(user)
+            #         print(new_access.access_token)
+            #         response = Response()
+            #         response.set_cookie('access',str(new_access.access_token),httponly=True)
+            #         response.set_cookie('refresh',str(new_access),httponly=True)
+            #         return response
+            # else:
+            #     return Response({'error': str(e)}, status=400)
+            
+            try:
+                if(RefreshToken(request.COOKIES.get('refresh'))):
                     user_id = request.COOKIES.get("user_id")
-                    refresh_token = RefreshToken(refresh_token)
                     user = User.objects.get(id=int(user_id))
-                    new_token = RefreshToken.for_user(user)
-                    print(access_token == new_token.access_token)
-                    # print("new access token",AccessToken(new_token.access_token))
-                    # print("new refresh token",RefreshToken(new_token))
-                    return Response({"error or success":"new tokens generated"},status=200)
-                # except TokenError as re:
-                #     return Response({'error': 'Refresh token has expired, again login'}, status=400)
-            else:
-                return Response({'error': str(e)}, status=400)
-        print(access_token.payload)
-        return Response({"success":"token is still valid"},status=200)
+                    new_access = RefreshToken.for_user(user)
+                    print(new_access.access_token)
+                    response = Response()
+                    response.set_cookie('access',str(new_access.access_token),httponly=True)
+                    response.set_cookie('refresh',str(new_access),httponly=True)
+                    return response
+            except TokenError as e:
+                return Response({"reason":"refresh token expired"},status=400)
+            
+
 
 class LoginAPIView(APIView):
     def post(self,request):
@@ -66,165 +79,387 @@ class LoginAPIView(APIView):
         user = User(username=username)
         user.set_password(str(password))
         user.save()
-        token = CustomRefreshToken.for_user(user)
+        token = RefreshToken.for_user(user)
         response = Response()
         response.set_cookie('access',str(token.access_token),httponly=True)
         response.set_cookie('refresh',str(token),httponly=True)
         response.set_cookie('user_id',user.id,httponly=True)
-        
         return response
+
+class LogOutAPIView(APIView):
+    def get(self,request):
+        response = Response()
+        response.delete_cookie('access')
+        response.delete_cookie('refresh')
+        response.delete_cookie('user_id')
+        response.data = {"logout successful"}
+        return response
+
+def VerifyToken(request):
+    try:
+        access_token = request.COOKIES.get("access")
+        if access_token is None:
+            raise Exception("Please provide token")
+
+        access_token = AccessToken(access_token)
+        
+        return Response()
+    except TokenError as e: 
+        # Check if the error is due to token expiration
+        # if str(e) == 'Token is invalid or expired': 
+        #         user_id = request.COOKIES.get("user_id")
+            
+        #         user = User.objects.get(id=int(user_id))
+        #         new_access = RefreshToken.for_user(user)
+        #         print(new_access.access_token)
+        #         response = Response()
+        #         response.set_cookie('access',str(new_access.access_token),httponly=True)
+        #         response.set_cookie('refresh',str(new_access),httponly=True)
+        #         return response
+        # else:
+        #     return Response({'error': str(e)}, status=400)
+        
+        try:
+            if(RefreshToken(request.COOKIES.get('refresh'))):
+                user_id = request.COOKIES.get("user_id")
+                user = User.objects.get(id=int(user_id))
+                new_access = RefreshToken.for_user(user)
+                print(new_access.access_token)
+                response = Response()
+                response.set_cookie('access',str(new_access.access_token),httponly=True)
+                response.set_cookie('refresh',str(new_access),httponly=True)
+                return response
+        except TokenError as e:
+                raise Exception("Refresh token expired")
 
 
 class CourseAPIView(APIView):
     def get(self,request):
         try:
+
+            response = VerifyToken(request)
             course_objs = Courses.objects.all()
             serializer = CourseSerializer(course_objs,many=True)
-            
-            return Response(serializer.data,status=status.HTTP_202_ACCEPTED)
+            response.data = {"data":serializer.data}
+            response.status_code = status.HTTP_202_ACCEPTED
+            return response 
+        
         except Exception as e:
+
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+            
             return Response({"error":"Provide Valid Data","status":404},status=status.HTTP_404_NOT_FOUND)
         
     def post(self,request):
         try:
+
+            response = VerifyToken(request)
             serializer = CourseSerializer(data = request.data)
             if not serializer.is_valid():
-                return Response({'error':serializer.errors},status=status.HTTP_400_BAD_REQUEST)
+                response.data = {'error':serializer.errors}
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return response
             
             serializer.save()
-            return Response("Data Saved",status=status.HTTP_201_CREATED)
+            response.data = "Data Saved"
+            response.status_code = status.HTTP_201_CREATED
+            return response
         except Exception as e:
+
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+            
             return Response({"error":"Provide Valid Data","status":404},status=status.HTTP_404_NOT_FOUND)
+        
     def put(self,request,id):
         try:
+            response = VerifyToken(request)
             course_obj = Courses.objects.get(id=id)
             serializer = CourseSerializer(course_obj,data=request.data)
             if not serializer.is_valid():
-                return Response({"message":serializer.errors,"status":404},status=status.HTTP_404_NOT_FOUND)
+                response.data = {'error':serializer.errors}
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return response
             serializer.save()
-            return Response({"message":"Data Updated","status":200},status=status.HTTP_200_OK)
+            response.data = {"message":"Data Updated","status":200}
+            response.status_code = status.HTTP_200_OK
+            return response
         except Exception as e:
+
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+            
             return Response({"error":"Provide Valid Data","status":404},status=status.HTTP_404_NOT_FOUND)
 
     def patch(self,request,id):
         try:
+            response = VerifyToken(request)
             course_obj = Courses.objects.get(id=id)
             serializer = CourseSerializer(course_obj,data=request.data,partial=True)
             if not serializer.is_valid():
-                return Response({"message":serializer.errors,"status":404},status=status.HTTP_404_NOT_FOUND)
+                response.data = {'error':serializer.errors}
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return response
+    
             serializer.save()
-            return Response({"message":"Data Updated","status":200},status=status.HTTP_200_OK)
+            response.data = {"message":"Data Updated","status":200}
+            response.status_code = status.HTTP_200_OK
+            return response
         except Exception as e:
+
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+            
             return Response({'error':"Provide Valid Data","status":404},status=status.HTTP_404_NOT_FOUND)
 
     def delete(self,request,id):
         try:
+            response = VerifyToken(request)
             course_obj = Courses.objects.get(id=id)
             serializer = CourseSerializer(course_obj,data=request.data)
             if not serializer.is_valid():
-                return Response({"message":serializer.errors,"status":404},status=status.HTTP_404_NOT_FOUND)
+                response.data = {'error':serializer.errors}
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return response
+                
             course_obj.delete()
-            return Response({'message':'Data Deleted',"status":200},status=status.HTTP_200_OK)
+            response.data = {'message':'Data Deleted',"status":200}
+            response.status_code = status.HTTP_200_OK
+            return response
         except Exception as e:
+
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+                        
             return Response({'message':'Provide Valid Data','status':404},status=status.HTTP_404_NOT_FOUND)
 
 class InstructorAPIView(APIView):
     
     def get(self,request):
         try:
+            response = VerifyToken(request)
             instructor_objs = Instructors.objects.all()
             serializer = InstructorSerializer(instructor_objs,many=True)
-            return Response(serializer.data,status=status.HTTP_202_ACCEPTED)
+            response.data = {"data":serializer.data}
+            response.status_code = status.HTTP_202_ACCEPTED
+            return response
         except Exception as e:
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+             
             return Response({"error":"Provide Valid Data","status":404},status=status.HTTP_404_NOT_FOUND)
     def post(self,request):
         try:
+            response = VerifyToken(request)
             serializer = InstructorSerializer(data = request.data)
             if not serializer.is_valid():
-                return Response({"error":serializer.errors},status=status.HTTP_400_BAD_REQUEST)
+                response.data = {'error':serializer.errors}
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return response
+                
             serializer.save()
-            return Response("Data Saved",status=status.HTTP_201_CREATED)
+            response.data = "Data Saved"
+            response.status_code = status.HTTP_201_CREATED
+            return response
         except Exception as e:
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+            
             return Response({"error":"Provide Valid Data","status":404},status=status.HTTP_404_NOT_FOUND)
 
     def put(self,request,id):
         try:
+            response = VerifyToken(request)
             instructor_obj = Instructors.objects.get(id=id)
             serializer = InstructorSerializer(instructor_obj,data=request.data)
             if not serializer.is_valid():
-                return Response({"message":serializer.errors,"status":404},status=status.HTTP_404_NOT_FOUND)
+                response.data = {'error':serializer.errors}
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return response
             serializer.save()
-            return Response({"message":"Data Updated","status":200},status=status.HTTP_200_OK)
+            response.data = {"message":"Data Updated","status":200}
+            response.status_code = status.HTTP_200_OK
+            return response
         except Exception as e:
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+            
             return Response({"error":"Provide Valid Data","status":404},status=status.HTTP_404_NOT_FOUND)
 
     def patch(self,request,id):
         try:
+            response = VerifyToken(request)
             instructor_obj = Instructors.objects.get(id=id)
             serializer = InstructorSerializer(instructor_obj,data=request.data,partial=True)
             if not serializer.is_valid():
-                return Response({"message":serializer.erros,"status":404},status=status.HTTP_404_NOT_FOUND)
+                response.data = {'error':serializer.errors}
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return response
+                
             serializer.save()
-            return Response({"message":"Data Updated","status":200},status=status.HTTP_200_OK)
+            response.data = {"message":"Data Updated","status":200}
+            response.status_code = status.HTTP_200_OK
+            return response
         except Exception as e:
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+            
             return Response({'error':"Provide Valid Data","status":404},status=status.HTTP_404_NOT_FOUND)
 
     def delete(self,request,id):
         try:
+            response = VerifyToken(request)
             instructor_obj = Instructors.objects.get(id=id)
             serializer = InstructorSerializer(data=request.data)
             if not serializer.is_valid():
-                return Response({"error":serializer.errors,"status":404},status=status.HTTP_404_NOT_FOUND)
+                response.data = {'error':serializer.errors}
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return response
+                
             instructor_obj.delete()
-            return Response({'message':'Data Deleted',"status":200},status=status.HTTP_200_OK)
+            response.data = {'message':'Data Deleted'}
+            response.status_code = status.HTTP_200_OK
+            return response
         except Exception as e:
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+            
             return Response({'message':'Provide Valid Data','status':404},status=status.HTTP_404_NOT_FOUND)
 
 class StudentAPIView(APIView):
     def get(self,request):
         try:
+            response = VerifyToken(request)
             student_objs = Students.objects.all()
             serializer = StudentSerializer(student_objs,many=True)
-            return Response(serializer.data,status=status.HTTP_202_ACCEPTED)
+            response.data = {"data":serializer.data}
+            response.status_code = status.HTTP_202_ACCEPTED
+            return response
         except Exception as e:
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+            
             return Response({"error":"Provide Valid Data","status":404},status=status.HTTP_404_NOT_FOUND)
     def post(self,request):
         try:
+            response = VerifyToken(request)
             serializer = StudentSerializer(data=request.data)
             if not serializer.is_valid():
-                return Response({"error":serializer.errors},status=status.HTTP_400_BAD_REQUEST)
+                response.data = {'error':serializer.errors}
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return response
+                
             serializer.save()
-            return Response("Data Saved",status=status.HTTP_201_CREATED)
+            response.data = {"Data Saved"}
+            response.status_code = status.HTTP_201_CREATED
+            return response
         except Exception as e:
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+            
             return Response({"error":"Provide Valid Data","status":404},status=status.HTTP_404_NOT_FOUND)
         
     def put(self,request,id):
         try:
+            response = VerifyToken(request)
             student_obj = Students.objects.get(id=id)
             serializer = StudentSerializer(student_obj,data=request.data)
             if not serializer.is_valid():
-                return Response({"message":serializer.errors,"status":404},status=status.HTTP_404_NOT_FOUND)
+                response.data = {'error':serializer.errors}
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return response
+                
             serializer.save()
-            return Response({"message":"Data Updated","status":200},status=status.HTTP_200_OK)
+            response.data = {"message":"Data Updated"}
+            response.status_code = status.HTTP_200_OK
+            return response
         except Exception as e:
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+            
             return Response({"error":"Provide Valid Data","status":404},status=status.HTTP_404_NOT_FOUND)
+        
     def patch(self,request,id):
         try:
+            response = VerifyToken(request)
             student_obj = Students.objects.get(id=id)
             serializer = InstructorSerializer(student_obj,data=request.data,partial=True)
             if not serializer.is_valid():
-                return Response({"message":serializer.errors,"status":404},status=status.HTTP_404_NOT_FOUND)
+                response.data = {'error':serializer.errors}
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return response
+            
             serializer.save()
-            return Response({"message":"Data Updated","status":200},status=status.HTTP_200_OK)
+            response.data = {"message":"Data Updated"}
+            response.status_code = status.HTTP_200_OK
+            return response
         except Exception as e:
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+            
             return Response({'error':"Provide Valid Data","status":404},status=status.HTTP_404_NOT_FOUND)
     def delete(self,request,id):
         try:
+            response = VerifyToken(request)
             student_obj = Instructors.objects.get(id=id)
             serializer = InstructorSerializer(data=request.data)
             if not serializer.is_valid():
-                return Response({"error":serializer.errors,"status":404},status=status.HTTP_404_NOT_FOUND)
+                response.data = {'error':serializer.errors}
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return response
+                
             student_obj.delete()
-            return Response({'message':'Data Deleted',"status":200},status=status.HTTP_200_OK)
+            response.data = {'message':'Data Deleted'}
+            response.status_code = status.HTTP_200_OK
+            return response
         except Exception as e:
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+            
             return Response({'message':'Provide Valid Data','status':404},status=status.HTTP_404_NOT_FOUND)
