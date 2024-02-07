@@ -1,9 +1,8 @@
 from rest_framework import serializers
 from .models import Students,Instructors,Courses
 from django.contrib.auth.hashers import make_password
-from rest_framework_simplejwt.tokens import RefreshToken
 import re
-#validate - common validation to all fields is check for sql injection by using validate() and loop through every
+
 
 class CourseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -11,15 +10,6 @@ class CourseSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate(self,data):
-        # for field,value in data.items():
-        #     try:
-        #         if ';' in value or 'select' in value or '*' in value or '--' in value:
-        #             errors[field] = "provide valid character"
-        #     except Exception as e:
-        #         print()
-        #         pass
-        # if errors:
-        #     raise serializers.ValidationError(errors)
         for value in data.values():
             if isinstance(value, str):
                 if re.search(r';|DROP TABLE|ALTER TABLE|UPDATE|DELETE|TRUNCATE|INSERT|SELECT|CREATE TABLE', value, re.IGNORECASE):
@@ -34,12 +24,6 @@ class InstructorSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate(self,data):
-        errors = {}
-        # for field,value in data.items():
-        #     if ';' in value or 'select' in value or '*' in value or '--' in value:
-        #         errors[field] = "provide valid character"
-        # if errors:
-        #     raise serializers.ValidationError(errors)
         for value in data.values():
             if isinstance(value, str):
                 if re.search(r';|DROP TABLE|ALTER TABLE|UPDATE|DELETE|TRUNCATE|INSERT|SELECT|CREATE TABLE', value, re.IGNORECASE):
@@ -63,12 +47,6 @@ class StudentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate(self,data):
-        errors = {}
-        # for field,value in data.items():
-        #     if ((';' in value or 'select' in value) or ('*' in value or '--' in value)):
-        #         errors[field] = "provide valid character"
-        # if errors:
-        #     raise serializers.ValidationError(errors)
         for value in data.values():
             if isinstance(value, str):
                 if re.search(r';|DROP TABLE|ALTER TABLE|UPDATE|DELETE|TRUNCATE|INSERT|SELECT|CREATE TABLE', value, re.IGNORECASE):

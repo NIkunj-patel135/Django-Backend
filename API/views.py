@@ -354,7 +354,7 @@ class StudentAPIView(APIView):
             
             return Response({"error":str(e),"status":404},status=status.HTTP_404_NOT_FOUND)
     def post(self,request):
-        # try:
+        try:
             response = VerifyToken(request,access_type="student-access")
             serializer = StudentSerializer(data=request.data)
             if not serializer.is_valid():
@@ -366,12 +366,12 @@ class StudentAPIView(APIView):
             response.data = {"Data Saved"}
             response.status_code = status.HTTP_201_CREATED
             return response
-        # except Exception as e:
-        #     if str(e) == "Please provide token":
-        #         return Response({'token error':"Please provide token"})
+        except Exception as e:
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
             
-        #     if str(e) == "Refresh token expired":
-        #         return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
             
             return Response({"error":str(e),"status":404},status=status.HTTP_404_NOT_FOUND)
         
