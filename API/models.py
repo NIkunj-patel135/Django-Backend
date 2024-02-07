@@ -24,16 +24,16 @@ class Instructors(models.Model):
 
     name = models.CharField(max_length=200)
     email = models.EmailField(max_length=200)
-    phone = models.CharField(max_length=18)
-    country = models.CharField(max_length=100)
-    address = models.TextField()
-    zipcode = models.CharField(max_length=50)
+    phone = models.CharField(max_length=18,blank=True, default='')
+    country = models.CharField(max_length=100,blank=True, default='')
+    address = models.TextField(blank=True, default='')
+    zipcode = models.CharField(max_length=50,blank=True, default='')
     password = models.CharField(max_length=50)
-    profile_image = models.URLField(max_length=250)
+    profile_image = models.URLField(max_length=250,blank=True, default='')
 #     # social_profiles =
 #     # notifications_settings =
 #     # linked_accounts =
-    total_reviews = models.CharField(max_length=10)
+    total_reviews = models.CharField(max_length=10,blank=True, default='')
 
     courses_taught = models.ManyToManyField(Courses)
 
@@ -42,14 +42,14 @@ class Instructors(models.Model):
 class Students(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField(max_length=200)
-    phone = models.CharField(max_length=30)
+    phone = models.CharField(max_length=30,blank=True, default='')
     password = models.CharField(max_length=400)
-    profileImage = models.URLField(max_length=250)
-    billinginfo = models.CharField(max_length=200)
-    subscription = models.CharField(max_length=200)
-    fees_amount_paid = models.CharField(max_length=30)
-    payment_method = models.CharField(max_length=30)
-    wishlist = ArrayField(models.CharField(max_length=50), size=10)
+    profileImage = models.URLField(max_length=250,blank=True, default='')
+    billinginfo = models.CharField(max_length=200,blank=True, default='')
+    subscription = models.CharField(max_length=200,blank=True, default='')
+    fees_amount_paid = models.CharField(max_length=30,blank=True, default='')
+    payment_method = models.CharField(max_length=30,blank=True, default='')
+    wishlist = ArrayField(models.CharField(max_length=50), size=10,blank=True,null=True)
     # wishlist = models.ManyToManyField(Courses)
 
 
