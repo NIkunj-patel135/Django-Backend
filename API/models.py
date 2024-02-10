@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
 
+
 class Courses(models.Model):
 
     title = models.CharField(max_length=100)
@@ -15,6 +16,8 @@ class Courses(models.Model):
     certification_avaliable = models.BooleanField()
     fees = models.CharField(max_length=50)
     plan_type = models.CharField(max_length=50)
+    course_video = models.URLField(max_length=300,blank=True,default="")
+    instructor_id = models.CharField(max_length=1000,blank=True,default="")    
 
     def __str__(self):
         return self.title
@@ -28,7 +31,7 @@ class Instructors(models.Model):
     country = models.CharField(max_length=100,blank=True, default='')
     address = models.TextField(blank=True, default='')
     zipcode = models.CharField(max_length=50,blank=True, default='')
-    password = models.CharField(max_length=50)
+    password = models.CharField(max_length=400)
     profile_image = models.URLField(max_length=250,blank=True, default='')
 #     # social_profiles =
 #     # notifications_settings =

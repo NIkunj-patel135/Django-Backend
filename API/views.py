@@ -9,8 +9,77 @@ from rest_framework_simplejwt.views import TokenError
 from django.contrib.auth.hashers import check_password
 
 
+def VerifyToken(request,access_type=None):
+    try:
+        if(access_type is not None):
+            if(access_type != request.COOKIES.get('access-type')):
+                raise Exception("Unauthorized access")
+        access_token = request.COOKIES.get("access")
+        if access_token is None:
+            raise Exception("Please provide token")
+
+        access_token = AccessToken(access_token)
+        
+        return Response()
+    except TokenError as e:        
+        try:
+            if(RefreshToken(request.COOKIES.get('refresh'))):
+                user_id = request.COOKIES.get("user_id")
+                user = User.objects.get(id=int(user_id))
+                new_access = RefreshToken.for_user(user)
+                print(new_access.access_token)
+                response = Response()
+                response.set_cookie('access',str(new_access.access_token),httponly=True)
+                response.set_cookie('refresh',str(new_access),httponly=True)
+                return response
+        except TokenError as e:
+                raise Exception("Refresh token expired")
 
 
+class StudentAuthAPIView(APIView):
+    def get(self,request):
+        try:
+            response = VerifyToken(request,'student-access')
+            student_id = request.COOKIES.get('user_id')
+            try:
+                student_obj = Students.objects.get(id=student_id)
+            except Students.DoesNotExist:
+                raise Exception("Given id is InValid")
+            serializer = StudentSerializer(student_obj)
+            response.data = {"data":serializer.data}
+            response.status_code = status.HTTP_200_OK
+            return response
+        except Exception as e:
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+            
+            return Response({"error":str(e),"status":404},status=status.HTTP_404_NOT_FOUND)
+        
+class InstructorAuthAPIView(APIView):
+    def get(self,request):
+        try:
+            response = VerifyToken(request,'instructor-access')
+            instructor_id = request.COOKIES.get('user_id')
+            try:
+                instructor_obj = Instructors.objects.get(id=instructor_id)
+            except Instructors.DoesNotExist:
+                raise Exception("Given id is InValid")
+            serializer = StudentSerializer(instructor_obj)
+            response.data = {"data":serializer.data}
+            response.status_code = status.HTTP_200_OK
+            return response
+        except Exception as e:
+            if str(e) == "Please provide token":
+                return Response({'token error':"Please provide token"})
+            
+            if str(e) == "Refresh token expired":
+                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+            
+            return Response({"error":str(e),"status":404},status=status.HTTP_404_NOT_FOUND)
+        
 
 class StudentRegisterAPIView(APIView):
     def post(self,request):
@@ -59,8 +128,9 @@ class InstructorLoginAPIView(APIView):
     def post(self,request):
         username = request.data['name']
         password = request.data['password']
+        email = request.data["email"]
         try:
-            instructor = Instructors.objects.get(name=username)
+            instructor = Instructors.objects.get(email=email)
             if(not check_password(password,instructor.password)):
                 raise Exception("password is wrong")
             
@@ -84,38 +154,30 @@ class LogOutAPIView(APIView):
         response.data = {"logout successful"}
         return response
 
-def VerifyToken(request,access_type=None):
-    try:
-        if(access_type is not None):
-            if(access_type != request.COOKIES.get('access-type')):
-                raise Exception("Unauthorized access")
-        access_token = request.COOKIES.get("access")
-        if access_token is None:
-            raise Exception("Please provide token")
-
-        access_token = AccessToken(access_token)
-        
-        return Response()
-    except TokenError as e:        
-        try:
-            if(RefreshToken(request.COOKIES.get('refresh'))):
-                user_id = request.COOKIES.get("user_id")
-                user = User.objects.get(id=int(user_id))
-                new_access = RefreshToken.for_user(user)
-                print(new_access.access_token)
-                response = Response()
-                response.set_cookie('access',str(new_access.access_token),httponly=True)
-                response.set_cookie('refresh',str(new_access),httponly=True)
-                return response
-        except TokenError as e:
-                raise Exception("Refresh token expired")
 
 
 class CourseAPIView(APIView):
-    def get(self,request):
+    def get(self,request,id=None):
         try:
-
             response = VerifyToken(request)
+            if(id is not None):
+                try:
+                    course_objs = Courses.objects.get(id=id)
+                except Courses.DoesNotExist:
+                    raise Exception("Given id is Invalid")
+                serializer = CourseSerializer(course_objs)
+                response.data = {"data":serializer.data}
+                response.status_code = status.HTTP_202_ACCEPTED
+                return response
+            
+            if(request.GET.get("ids")):
+                ids = request.GET.get('ids', '').split(',')
+                course_objs = Courses.objects.filter(id__in=ids).order_by('id')
+                serializer = CourseSerializer(course_objs,many=True)
+                response.data = {"data":serializer.data}
+                response.status_code = status.HTTP_202_ACCEPTED
+                return response 
+
             course_objs = Courses.objects.all()
             serializer = CourseSerializer(course_objs,many=True)
             response.data = {"data":serializer.data}
@@ -136,13 +198,13 @@ class CourseAPIView(APIView):
         try:
 
             response = VerifyToken(request)
+            instructor_id=request.COOKIES.get('user_id')
             serializer = CourseSerializer(data = request.data)
-            if not serializer.is_valid():
+            if  not serializer.is_valid():
                 response.data = {'error':serializer.errors}
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return response
-            
-            serializer.save()
+            serializer.save(instructor_id=instructor_id)
             response.data = "Data Saved"
             response.status_code = status.HTTP_201_CREATED
             return response
@@ -159,7 +221,10 @@ class CourseAPIView(APIView):
     def put(self,request,id):
         try:
             response = VerifyToken(request)
-            course_obj = Courses.objects.get(id=id)
+            try:
+                course_obj = Courses.objects.get(id=id)
+            except Courses.DoesNotExist:
+                    raise Exception("Given id is Invalid")
             serializer = CourseSerializer(course_obj,data=request.data)
             if not serializer.is_valid():
                 response.data = {'error':serializer.errors}
@@ -182,7 +247,10 @@ class CourseAPIView(APIView):
     def patch(self,request,id):
         try:
             response = VerifyToken(request)
-            course_obj = Courses.objects.get(id=id)
+            try:
+                course_obj = Courses.objects.get(id=id)
+            except Courses.DoesNotExist:
+                    raise Exception("Given id is Invalid")
             serializer = CourseSerializer(course_obj,data=request.data,partial=True)
             if not serializer.is_valid():
                 response.data = {'error':serializer.errors}
@@ -206,7 +274,10 @@ class CourseAPIView(APIView):
     def delete(self,request,id):
         try:
             response = VerifyToken(request)
-            course_obj = Courses.objects.get(id=id)
+            try:
+                course_obj = Courses.objects.get(id=id)
+            except Courses.DoesNotExist:
+                    raise Exception("Given id is Invalid")
             serializer = CourseSerializer(course_obj,data=request.data)
             if not serializer.is_valid():
                 response.data = {'error':serializer.errors}
@@ -229,10 +300,27 @@ class CourseAPIView(APIView):
 
 class InstructorAPIView(APIView):
     
-    def get(self,request):
+    def get(self,request,id=None):
         try:
-            
             response = VerifyToken(request,access_type = "instructor-access")
+            if(id is not None):
+                try:
+                    instructor_objs = Instructors.objects.get(id=id)
+                except Instructors.DoesNotExist:
+                    raise Exception("Given id is Invalid")
+                serializer = InstructorSerializer(instructor_objs)
+                response.data = {"data":serializer.data}
+                response.status_code = status.HTTP_202_ACCEPTED
+                return response
+            
+            if(request.GET.get("ids")):
+                ids = request.GET.get('ids', '').split(',')
+                instructor_objs = Instructors.objects.filter(id__in=ids).order_by('id')
+                serializer = InstructorSerializer(instructor_objs,many=True)
+                response.data = {"data":serializer.data}
+                response.status_code = status.HTTP_202_ACCEPTED
+                return response
+            
             instructor_objs = Instructors.objects.all()
             serializer = InstructorSerializer(instructor_objs,many=True)
             response.data = {"data":serializer.data}
@@ -271,7 +359,10 @@ class InstructorAPIView(APIView):
     def put(self,request,id):
         try:
             response = VerifyToken(request,access_type="instructor-access")
-            instructor_obj = Instructors.objects.get(id=id)
+            try:
+                instructor_obj = Instructors.objects.get(id=id)
+            except Instructors.DoesNotExist:
+                    raise Exception("Given id is Invalid")
             serializer = InstructorSerializer(instructor_obj,data=request.data)
             if not serializer.is_valid():
                 response.data = {'error':serializer.errors}
@@ -293,7 +384,10 @@ class InstructorAPIView(APIView):
     def patch(self,request,id):
         try:
             response = VerifyToken(request,access_type="instructor-access")
-            instructor_obj = Instructors.objects.get(id=id)
+            try:
+                instructor_obj = Instructors.objects.get(id=id)
+            except Instructors.DoesNotExist:
+                    raise Exception("Given id is Invalid")
             serializer = InstructorSerializer(instructor_obj,data=request.data,partial=True)
             if not serializer.is_valid():
                 response.data = {'error':serializer.errors}
@@ -316,7 +410,10 @@ class InstructorAPIView(APIView):
     def delete(self,request,id):
         try:
             response = VerifyToken(request,access_type="instructor-access")
-            instructor_obj = Instructors.objects.get(id=id)
+            try:
+                instructor_obj = Instructors.objects.get(id=id)
+            except Instructors.DoesNotExist:
+                    raise Exception("Given id is Invalid")
             serializer = InstructorSerializer(data=request.data)
             if not serializer.is_valid():
                 response.data = {'error':serializer.errors}
@@ -337,14 +434,33 @@ class InstructorAPIView(APIView):
             return Response({'message':str(e),'status':404},status=status.HTTP_404_NOT_FOUND)
 
 class StudentAPIView(APIView):
-    def get(self,request):
+    def get(self,request,id=None):
         try:
             response = VerifyToken(request,access_type="student-access")
+            if(id is not None):
+                try:
+                    student_obj = Students.objects.get(id=id)
+                    print(student_obj)
+                except Students.DoesNotExist:
+                    raise Exception("Given id is Invalid")
+                serializer = StudentSerializer(student_obj)
+                response.data = {"data":serializer.data}
+                response.status_code = status.HTTP_202_ACCEPTED
+                return response
+            if(request.GET.get("ids")):
+                ids = request.GET.get('ids', '').split(',')
+                student_objs = Students.objects.filter(id__in=ids).order_by('id')
+                serializer = StudentSerializer(student_objs,many=True)
+                response.data = {"data":serializer.data}
+                response.status_code = status.HTTP_202_ACCEPTED
+                return response
+            
             student_objs = Students.objects.all()
             serializer = StudentSerializer(student_objs,many=True)
             response.data = {"data":serializer.data}
             response.status_code = status.HTTP_202_ACCEPTED
             return response
+        
         except Exception as e:
             if str(e) == "Please provide token":
                 return Response({'token error':"Please provide token"})
@@ -378,7 +494,10 @@ class StudentAPIView(APIView):
     def put(self,request,id):
         try:
             response = VerifyToken(request,access_type="student-access")
-            student_obj = Students.objects.get(id=id)
+            try:
+                student_obj = Students.objects.get(id=id)
+            except Students.DoesNotExist:
+                    raise Exception("Given id is Invalid")
             serializer = StudentSerializer(student_obj,data=request.data)
             if not serializer.is_valid():
                 response.data = {'error':serializer.errors}
@@ -401,7 +520,10 @@ class StudentAPIView(APIView):
     def patch(self,request,id):
         try:
             response = VerifyToken(request,access_type="student-access")
-            student_obj = Students.objects.get(id=id)
+            try:
+                student_obj = Students.objects.get(id=id)
+            except Students.DoesNotExist:
+                    raise Exception("Given id is Invalid")
             serializer = InstructorSerializer(student_obj,data=request.data,partial=True)
             if not serializer.is_valid():
                 response.data = {'error':serializer.errors}
@@ -423,7 +545,10 @@ class StudentAPIView(APIView):
     def delete(self,request,id):
         try:
             response = VerifyToken(request,access_type="student-access")
-            student_obj = Instructors.objects.get(id=id)
+            try:
+                student_obj = Instructors.objects.get(id=id)
+            except Students.DoesNotExist:
+                    raise Exception("Given id is Invalid")
             serializer = InstructorSerializer(data=request.data)
             if not serializer.is_valid():
                 response.data = {'error':serializer.errors}

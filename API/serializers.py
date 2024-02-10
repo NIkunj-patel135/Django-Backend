@@ -15,6 +15,12 @@ class CourseSerializer(serializers.ModelSerializer):
                 if re.search(r';|DROP TABLE|ALTER TABLE|UPDATE|DELETE|TRUNCATE|INSERT|SELECT|CREATE TABLE', value, re.IGNORECASE):
                     raise serializers.ValidationError("Input contains potentially harmful SQL characters or queries.")
         return data
+    
+    def create(self,validated_data):
+        
+        validated_data['instructor_id'] = validated_data.get('instructor_id')
+        print(validated_data['instructor_id'])
+        return Courses.objects.create(**validated_data)
         
 class InstructorSerializer(serializers.ModelSerializer):
     courses_taught = CourseSerializer(many=True)
@@ -22,6 +28,22 @@ class InstructorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Instructors
         fields = '__all__'
+
+
+    def validate_email(self,data):
+        
+        email_check = Instructors.objects.filter(email=data).exists()
+        if not email_check:
+            return data
+        raise Exception("Email already exists")
+    
+    def validate_phone(self,data):
+        
+        phone_check = Instructors.objects.filter(phone=data).exists()
+        if not phone_check:
+            return data
+        raise Exception("Phone number already exists")
+
 
     def validate(self,data):
         for value in data.values():
@@ -45,6 +67,20 @@ class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Students
         fields = '__all__'
+
+    def validate_email(self,data):
+        
+        email_check = Students.objects.filter(email=data).exists()
+        if not email_check:
+            return data
+        raise Exception("Email already exists")
+    
+    def validate_phone(self,data):
+    
+        phone_check = Students.objects.filter(phone=data).exists()
+        if not phone_check:
+            return data
+        raise Exception("Phone number already exists")
 
     def validate(self,data):
         for value in data.values():
