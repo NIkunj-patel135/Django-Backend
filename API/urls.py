@@ -1,7 +1,16 @@
 from django.urls import path
-from .views import CourseAPIView,InstructorAPIView,StudentAPIView,LogOutAPIView
-from .views import InstructorRegisterAPIView,StudentRegisterAPIView,StudentLoginAPIView,InstructorLoginAPIView
-from .views import StudentAuthAPIView,InstructorAuthAPIView
+from .views.CourseAPI import CourseAPIView
+from .views.InstructorAPI import InstructorAPIView
+from .views.StudentAPI import StudentAPIView 
+from .auths.instructorAuthAPI import InstructorAuthAPIView
+from .auths.studentAuthAPI import StudentAuthAPIView
+from .register_login_logout.studentRegister import StudentRegisterAPIView
+from .register_login_logout.instructorRegister import InstructorRegisterAPIView
+from .register_login_logout.studentLogin import StudentLoginAPIView
+from .register_login_logout.instructorLogin import InstructorLoginAPIView
+from .register_login_logout.logout import LogOutAPIView
+
+
 
 urlpatterns = [
     path('api/v1/course/',CourseAPIView.as_view()),
