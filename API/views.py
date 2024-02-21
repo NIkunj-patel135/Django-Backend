@@ -89,7 +89,7 @@ class StudentRegisterAPIView(APIView):
                 return Response({'error':serializer.errors},status=status.HTTP_400_BAD_REQUEST)
                 
             serializer.save()
-            return Response({},status=status.HTTP_201_CREATED)
+            return Response({"success"},status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({"error":str(e),"status":404},status=status.HTTP_404_NOT_FOUND)
 
@@ -101,20 +101,22 @@ class InstructorRegisterAPIView(APIView):
                 return Response({'error':serializer.errors},status=status.HTTP_400_BAD_REQUEST)
                 
             serializer.save()
-            return Response({},status=status.HTTP_201_CREATED)
+            return Response({"success"},status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({"error":str(e),"status":404},status=status.HTTP_404_NOT_FOUND)
 
 class StudentLoginAPIView(APIView):
     def post(self,request):
-        username = request.data['name']
-        password = request.data['password']
         try:
+            username = request.data['name']
+            password = request.data['password']
             student = Students.objects.get(name=username)
             if(not check_password(password,student.password)):
                 raise Exception("password is wrong")
             token = RefreshToken.for_user(student)
             response = Response()
+            response.data = {"success"}
+            response.status_code = status.HTTP_200_OK
             response.set_cookie('access',str(token.access_token),httponly=True,secure=True)
             response.set_cookie('refresh',str(token),httponly=True,secure=True)
             response.set_cookie('access-type','student-access',httponly=True,secure=True)
@@ -126,16 +128,17 @@ class StudentLoginAPIView(APIView):
 
 class InstructorLoginAPIView(APIView):
     def post(self,request):
-        username = request.data['name']
-        password = request.data['password']
-        email = request.data["email"]
         try:
-            instructor = Instructors.objects.get(email=email)
+            username = request.data['name']
+            password = request.data['password']
+            instructor = Instructors.objects.get(name=username)
             if(not check_password(password,instructor.password)):
                 raise Exception("password is wrong")
             
             token = RefreshToken.for_user(instructor)
             response = Response()
+            response.data = {"success"}
+            response.status_code = status.HTTP_200_OK
             response.set_cookie('access',str(token.access_token),httponly=True,secure=True)
             response.set_cookie('refresh',str(token),httponly=True,secure=True)
             response.set_cookie('access-type',"instructor-access",httponly=True,secure=True)
@@ -505,7 +508,7 @@ class StudentAPIView(APIView):
                 return response
                 
             serializer.save()
-            response.data = {"message":"Data Updated"}
+            response.data = {"message":"Data Updated","Data":serializer.data}
             response.status_code = status.HTTP_200_OK
             return response
         except Exception as e:
@@ -524,14 +527,14 @@ class StudentAPIView(APIView):
                 student_obj = Students.objects.get(id=id)
             except Students.DoesNotExist:
                     raise Exception("Given id is Invalid")
-            serializer = InstructorSerializer(student_obj,data=request.data,partial=True)
+            serializer = StudentSerializer(student_obj,data=request.data,partial=True)
             if not serializer.is_valid():
                 response.data = {'error':serializer.errors}
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return response
             
             serializer.save()
-            response.data = {"message":"Data Updated"}
+            response.data = {"message":"Data Updated","Data:":serializer.data}
             response.status_code = status.HTTP_200_OK
             return response
         except Exception as e:
