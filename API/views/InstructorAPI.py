@@ -19,7 +19,11 @@ class InstructorAPIView(APIView):
                 except Instructors.DoesNotExist:
                     raise Exception("Given id is Invalid")
                 serializer = InstructorSerializer(instructor_objs)
-                response.data = {"data":serializer.data}
+                response.data = {
+                    "success":True,
+                    "message":"Instructor GET request Successful",
+                    "Data":serializer.data
+                }
                 response.status_code = status.HTTP_202_ACCEPTED
                 return response
             
@@ -27,44 +31,77 @@ class InstructorAPIView(APIView):
                 ids = request.GET.get('ids', '').split(',')
                 instructor_objs = Instructors.objects.filter(id__in=ids).order_by('id')
                 serializer = InstructorSerializer(instructor_objs,many=True)
-                response.data = {"data":serializer.data}
+                response.data = {
+                    "success":True,
+                    "message":"Instructor GET request Successful",
+                    "Data":serializer.data
+                }
                 response.status_code = status.HTTP_202_ACCEPTED
                 return response
             
             instructor_objs = Instructors.objects.all()
             serializer = InstructorSerializer(instructor_objs,many=True)
-            response.data = {"data":serializer.data}
+            response.data = {
+                "success":True,
+                "message":"Instructor GET request Successful",
+                "Data":serializer.data
+            }
             response.status_code = status.HTTP_202_ACCEPTED
             return response
         except Exception as e:
             if str(e) == "Please provide token":
-                return Response({'token error':"Please provide token"})
+                return Response({
+                    'success':False,
+                    'message':"Please provide token"
+                },status=status.HTTP_401_UNAUTHORIZED)
             
             if str(e) == "Refresh token expired":
-                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+                return Response({
+                    "success":False,
+                    "message":"Refresh token expired"
+                },status=status.HTTP_401_UNAUTHORIZED)
              
-            return Response({"error":str(e),"status":404},status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                "success":False,
+                "message":str(e)
+            },status=status.HTTP_404_NOT_FOUND)
+        
     def post(self,request):
         try:
             response = VerifyToken(request,access_type = "instructor-access")
             serializer = InstructorSerializer(data = request.data)
             if not serializer.is_valid():
-                response.data = {'error':serializer.errors}
+                response.data = {
+                    'success':False,
+                    'message':serializer.errors
+                }
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return response
                 
             serializer.save()
-            response.data = "Data Saved"
+            response.data = {
+                    'success':True,
+                    'message':"Instructor Data Saved Successfully"
+            }
             response.status_code = status.HTTP_201_CREATED
             return response
         except Exception as e:
             if str(e) == "Please provide token":
-                return Response({'token error':"Please provide token"})
+                return Response({
+                    'success':False,
+                    'message':"Please provide token"
+                },status=status.HTTP_401_UNAUTHORIZED)
             
             if str(e) == "Refresh token expired":
-                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+                return Response({
+                    "success":False,
+                    "message":"Refresh token expired"
+                },status=status.HTTP_401_UNAUTHORIZED)
             
-            return Response({"error":str(e),"status":404},status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                "success":False,
+                "message":str(e)
+            },status=status.HTTP_404_NOT_FOUND)
 
     def put(self,request,id):
         try:
@@ -75,21 +112,36 @@ class InstructorAPIView(APIView):
                     raise Exception("Given id is Invalid")
             serializer = InstructorSerializer(instructor_obj,data=request.data)
             if not serializer.is_valid():
-                response.data = {'error':serializer.errors}
+                response.data = {
+                    'success':False,
+                    'message':serializer.errors
+                }
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return response
             serializer.save()
-            response.data = {"message":"Data Updated","status":200}
+            response.data = {
+                "success":True,
+                "message":"Instructor Data Updated"
+            }
             response.status_code = status.HTTP_200_OK
             return response
         except Exception as e:
             if str(e) == "Please provide token":
-                return Response({'token error':"Please provide token"})
+                return Response({
+                    'success':False,
+                    'message':"Please provide token"
+                },status=status.HTTP_401_UNAUTHORIZED)
             
             if str(e) == "Refresh token expired":
-                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+                return Response({
+                    "success":False,
+                    "message":"Refresh token expired"
+                },status=status.HTTP_401_UNAUTHORIZED)
             
-            return Response({"error":str(e),"status":404},status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                "success":False,
+                "message":str(e)
+            },status=status.HTTP_404_NOT_FOUND)
 
     def patch(self,request,id):
         try:
@@ -100,22 +152,37 @@ class InstructorAPIView(APIView):
                     raise Exception("Given id is Invalid")
             serializer = InstructorSerializer(instructor_obj,data=request.data,partial=True)
             if not serializer.is_valid():
-                response.data = {'error':serializer.errors}
+                response.data = {
+                    'success':False,
+                    'message':serializer.errors
+                }
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return response
                 
             serializer.save()
-            response.data = {"message":"Data Updated","status":200}
+            response.data = {
+                "success":True,
+                "message":"Instructor Data Updated"
+            }
             response.status_code = status.HTTP_200_OK
             return response
         except Exception as e:
             if str(e) == "Please provide token":
-                return Response({'token error':"Please provide token"})
+                return Response({
+                    'success':False,
+                    'message':"Please provide token"
+                },status=status.HTTP_401_UNAUTHORIZED)
             
             if str(e) == "Refresh token expired":
-                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+                return Response({
+                    "success":False,
+                    "message":"Refresh token expired"
+                },status=status.HTTP_401_UNAUTHORIZED)
             
-            return Response({'error':str(e),"status":404},status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                'success':False,
+                'message':str(e)
+            },status=status.HTTP_404_NOT_FOUND)
 
     def delete(self,request,id):
         try:
@@ -126,19 +193,34 @@ class InstructorAPIView(APIView):
                     raise Exception("Given id is Invalid")
             serializer = InstructorSerializer(data=request.data)
             if not serializer.is_valid():
-                response.data = {'error':serializer.errors}
+                response.data = {
+                    'success':False,
+                    'message':serializer.errors
+                }
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return response
                 
             instructor_obj.delete()
-            response.data = {'message':'Data Deleted'}
+            response.data = {
+                'success':True,
+                'message':'Instructor Data Deleted'
+            }
             response.status_code = status.HTTP_200_OK
             return response
         except Exception as e:
             if str(e) == "Please provide token":
-                return Response({'token error':"Please provide token"})
+                return Response({
+                    'success':False,
+                    'message':"Please provide token"
+                },status=status.HTTP_401_UNAUTHORIZED)
             
             if str(e) == "Refresh token expired":
-                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+                return Response({
+                    "success":False,
+                    "message":"Refresh token expired"
+                },status=status.HTTP_401_UNAUTHORIZED)
             
-            return Response({'message':str(e),'status':404},status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                'success':False,
+                'message':str(e)
+            },status=status.HTTP_404_NOT_FOUND)
