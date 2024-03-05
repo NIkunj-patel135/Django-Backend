@@ -16,12 +16,18 @@ class InstructorLoginAPIView(APIView):
             
             token = RefreshToken.for_user(instructor)
             response = Response()
-            response.data = {"success"}
+            response.data = {
+                "success":True,
+                "message":"Instructor Login Successful"
+            }
             response.status_code = status.HTTP_200_OK
             response.set_cookie('access',str(token.access_token),httponly=True,secure=True)
             response.set_cookie('refresh',str(token),httponly=True,secure=True)
             response.set_cookie('access-type',"instructor-access",httponly=True,secure=True)
             response.set_cookie('user_id',instructor.id,httponly=True,secure=True)
         except Exception as e:
-            return Response({"error":str(e)},status=status.HTTP_401_UNAUTHORIZED)
+            return Response({
+                "success":False,
+                "message":str(e)
+            },status=status.HTTP_401_UNAUTHORIZED)
         return response

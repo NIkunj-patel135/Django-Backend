@@ -16,15 +16,28 @@ class InstructorAuthAPIView(APIView):
             except Instructors.DoesNotExist:
                 raise Exception("Given id is InValid")
             serializer = InstructorSerializer(instructor_obj)
-            response.data = {"data":serializer.data}
+            response.data = {
+                "success":True,
+                "message":"Instructor auth successful request",
+                "Data":serializer.data,
+            }
             response.status_code = status.HTTP_200_OK
             return response
         except Exception as e:
             if str(e) == "Please provide token":
-                return Response({'token error':"Please provide token"})
+                return Response({
+                    'success':False,
+                    'message':"Please provide token"
+                },status=status.HTTP_401_UNAUTHORIZED)
             
             if str(e) == "Refresh token expired":
-                return Response({"token error":"Refresh token expired"},status=status.HTTP_404_NOT_FOUND)
+                return Response({
+                    "success":False,
+                    "message":"Refresh token expired"
+                },status=status.HTTP_401_UNAUTHORIZED)
             
-            return Response({"error":str(e),"status":404},status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                "success":False,
+                "message":str(e)
+            },status=status.HTTP_404_NOT_FOUND)
      

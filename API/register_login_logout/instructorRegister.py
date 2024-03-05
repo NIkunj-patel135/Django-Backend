@@ -8,9 +8,18 @@ class InstructorRegisterAPIView(APIView):
         try:
             serializer = InstructorSerializer(data = request.data)
             if not serializer.is_valid():
-                return Response({'error':serializer.errors},status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    'success':False,
+                    'message':serializer.errors
+                },status=status.HTTP_400_BAD_REQUEST)
                 
             serializer.save()
-            return Response({"success"},status=status.HTTP_201_CREATED)
+            return Response({
+                "success":True,
+                "message":"Instructor Register Successful"
+            },status=status.HTTP_201_CREATED)
         except Exception as e:
-            return Response({"error":str(e),"status":404},status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                "success":False,
+                "message":str(e)
+            },status=status.HTTP_404_NOT_FOUND)

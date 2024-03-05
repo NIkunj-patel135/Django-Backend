@@ -77,7 +77,8 @@ class StudentAPIView(APIView):
             serializer.save()
             response.data = {
                 "success":True,
-                "message":"Student Data Saved"
+                "message":"Student Data Saved",
+                "Data":serializer.data
             }
             response.status_code = status.HTTP_201_CREATED
             return response
@@ -118,7 +119,8 @@ class StudentAPIView(APIView):
             serializer.save()
             response.data = {
                 "success":True,
-                "message":"Student Data Updated"
+                "message":"Student Data Updated",
+                "Data":serializer.data
             }
             response.status_code = status.HTTP_200_OK
             return response
@@ -160,6 +162,7 @@ class StudentAPIView(APIView):
             response.data = {
                 "success":True,
                 "message":"Student Data Updated",
+                "Data":serializer.data
             }
             response.status_code = status.HTTP_200_OK
             return response

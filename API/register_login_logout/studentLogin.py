@@ -16,13 +16,19 @@ class StudentLoginAPIView(APIView):
                 raise Exception("password is wrong")
             token = RefreshToken.for_user(student)
             response = Response()
-            response.data = {"success"}
+            response.data = {
+                "success":True,
+                "message":"Student Login successful"
+            }
             response.status_code = status.HTTP_200_OK
             response.set_cookie('access',str(token.access_token),httponly=True,secure=True)
             response.set_cookie('refresh',str(token),httponly=True,secure=True)
             response.set_cookie('access-type','student-access',httponly=True,secure=True)
             response.set_cookie('user_id',student.id,httponly=True,secure=True)
         except Exception as e:
-            return Response({"error":str(e)},status=status.HTTP_401_UNAUTHORIZED)
+            return Response({
+                "success":False,
+                "message":str(e)
+            },status=status.HTTP_401_UNAUTHORIZED)
 
         return response

@@ -81,7 +81,8 @@ class CourseAPIView(APIView):
             serializer.save(instructor_id=instructor_id)
             response.data = {
                     'success':True,
-                    'message':'Course Data Saved'
+                    'message':'Course Data Saved',
+                    'Data':serializer.data
             }
             response.status_code = status.HTTP_201_CREATED
             return response
@@ -122,7 +123,8 @@ class CourseAPIView(APIView):
             serializer.save()
             response.data = {
                 "success":True,
-                "message":"Course Data Updated"
+                "message":"Course Data Updated",
+                "Data":serializer.data
             }
             response.status_code = status.HTTP_200_OK
             return response
@@ -164,7 +166,8 @@ class CourseAPIView(APIView):
             serializer.save()
             response.data = {
                 "success":True,
-                "message":"Course Data Updated"
+                "message":"Course Data Updated",
+                "Data":serializer.data
             }
             response.status_code = status.HTTP_200_OK
             return response

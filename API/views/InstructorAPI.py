@@ -81,7 +81,8 @@ class InstructorAPIView(APIView):
             serializer.save()
             response.data = {
                     'success':True,
-                    'message':"Instructor Data Saved Successfully"
+                    'message':"Instructor Data Saved Successfully",
+                    'Data':serializer.data
             }
             response.status_code = status.HTTP_201_CREATED
             return response
@@ -121,7 +122,8 @@ class InstructorAPIView(APIView):
             serializer.save()
             response.data = {
                 "success":True,
-                "message":"Instructor Data Updated"
+                "message":"Instructor Data Updated",
+                "Data":serializer.data
             }
             response.status_code = status.HTTP_200_OK
             return response
@@ -162,7 +164,8 @@ class InstructorAPIView(APIView):
             serializer.save()
             response.data = {
                 "success":True,
-                "message":"Instructor Data Updated"
+                "message":"Instructor Data Updated",
+                "Data":serializer.data
             }
             response.status_code = status.HTTP_200_OK
             return response

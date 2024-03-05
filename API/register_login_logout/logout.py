@@ -1,3 +1,4 @@
+from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -9,5 +10,9 @@ class LogOutAPIView(APIView):
         response.delete_cookie('refresh')
         response.delete_cookie('user_id')
         response.delete_cookie('access-type')
-        response.data = {"logout successful"}
+        response.data = {
+            "success":True,
+            "message":"logout successful"
+        }
+        response.status_code = status.HTTP_200_OK
         return response
