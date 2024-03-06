@@ -9,9 +9,9 @@ from django.contrib.auth.hashers import check_password
 class StudentLoginAPIView(APIView):
     def post(self,request):
         try:
-            username = request.data['name']
+            email = request.data['email']
             password = request.data['password']
-            student = Students.objects.get(name=username)
+            student = Students.objects.get(email=email)
             if(not check_password(password,student.password)):
                 raise Exception("password is wrong")
             token = RefreshToken.for_user(student)
