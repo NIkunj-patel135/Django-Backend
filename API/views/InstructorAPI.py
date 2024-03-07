@@ -194,14 +194,7 @@ class InstructorAPIView(APIView):
                 instructor_obj = Instructors.objects.get(id=id)
             except Instructors.DoesNotExist:
                     raise Exception("Given id is Invalid")
-            serializer = InstructorSerializer(data=request.data)
-            if not serializer.is_valid():
-                response.data = {
-                    'success':False,
-                    'message':serializer.errors
-                }
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return response
+            
                 
             instructor_obj.delete()
             response.data = {

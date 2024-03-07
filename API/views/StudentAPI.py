@@ -190,15 +190,7 @@ class StudentAPIView(APIView):
                 student_obj = Students.objects.get(id=id)
             except Students.DoesNotExist:
                     raise Exception("Given id is Invalid")
-            serializer = StudentSerializer(data=request.data)
-            if not serializer.is_valid():
-                response.data = {
-                    'success':False,
-                    'message':serializer.errors
-                }
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return response
-                
+             
             student_obj.delete()
             response.data = {
                 'success':True,
